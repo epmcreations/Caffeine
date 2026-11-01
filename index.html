@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Caffeine</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="https://em-content.zobj.net/source/twitter/450/hot-beverage_2615.png">
+  <link rel="apple-touch-icon" href="https://em-content.zobj.net/source/twitter/450/hot-beverage_2615.png">
+  
+  <!-- Web Application Manifest (Data URL for single-file PWA setup) -->
+  <link rel="manifest" href='data:application/manifest+json,{"name":"Caffeine","short_name":"Caffeine","start_url":".","display":"standalone","background_color":"#000000","theme_color":"#000000","icons":[{"src":"https://em-content.zobj.net/source/twitter/450/hot-beverage_2615.png","sizes":"512x512","type":"image/png"}]}'>
+
+  <!-- Theme Color for Browser Header -->
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Absolute reset to prevent scrolling, margins, or callouts */
+    html, body {
+      background-color: #000000;
+      color: #000000;
+      height: 100vh;
+      width: 100vw;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+  </style>
+</head>
+<body class="bg-black flex items-center justify-center min-h-screen w-screen overflow-hidden select-none">
+
+  <!-- Twemoji Coffee Image -->
+  <img 
+    src="https://em-content.zobj.net/source/twitter/450/hot-beverage_2615.png" 
+    alt="Coffee Emoji" 
+    class="w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 object-contain pointer-events-none transform transition-transform duration-300 active:scale-95"
+    id="coffee-icon"
+  />
+
+  <script>
+    // Screen Wake Lock Handler
+    let wakeLock = null;
+
+    // Function to request the screen wake lock
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch (err) {
+        // Silently fail to maintain minimal aesthetic if restricted by browser policy
+        console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+      }
+    }
+
+    // Re-acquire lock on visibility change (e.g. user switches tabs and returns)
+    document.addEventListener('visibilitychange', async () => {
+      if (wakeLock !== null && document.visibilityState === 'visible') {
+        await requestWakeLock();
+      }
+    });
+
+    // Request wake lock when page initializes
+    window.addEventListener('DOMContentLoaded', () => {
+      requestWakeLock();
+    });
+
+    // Fallback attempt when user taps screen (handles browser autoplay/user interaction policies)
+    document.body.addEventListener('click', () => {
+      if (!wakeLock) {
+        requestWakeLock();
+      }
+    });
+  </script>
+</body>
+</html>
