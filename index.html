@@ -33,31 +33,39 @@
     }
   </style>
 </head>
-<body class="bg-black flex items-center justify-center min-h-screen w-screen overflow-hidden select-none">
+<body class="bg-black flex flex-col items-center justify-center min-h-screen w-screen overflow-hidden select-none relative">
 
   <!-- Centered Twemoji Coffee Emoji -->
   <img 
     src="https://em-content.zobj.net/source/twitter/450/hot-beverage_2615.png" 
     alt="Coffee Emoji" 
-    class="w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 object-contain pointer-events-none transform transition-transform duration-300 active:scale-95"
+    class="w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 object-contain pointer-events-none transform transition-transform duration-300 active:scale-95 mb-6"
     id="coffee-icon"
   />
+
+  <!-- PWA Install / Download Container -->
+  <div id="install-container" class="absolute bottom-10 flex flex-col items-center justify-center space-y-2 px-4 z-50">
+    <button 
+      id="install-btn" 
+      class="hidden bg-neutral-900 border border-neutral-700 hover:border-neutral-500 text-white font-medium text-sm px-5 py-2.5 rounded-full shadow-lg transition duration-200 hover:scale-105 active:scale-95 flex items-center space-x-2"
+    >
+      <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+      </svg>
+      <span>Install Caffeine App</span>
+    </button>
+    <div id="install-info" class="text-xs text-neutral-500 text-center max-w-xs font-sans opacity-75"></div>
+  </div>
 
   <script>
     // 1. Inline Service Worker Registration using a Blob URL for single-file PWA compliance
     if ('serviceWorker' in navigator) {
       const swCode = `
-        const CACHE_NAME = 'caffeine-v1';
-        self.addEventListener('install', (e) => {
-          e.waitUntil(self.skipWaiting());
-        });
-        self.addEventListener('activate', (e) => {
-          e.waitUntil(self.clients.claim());
-        });
+        const CACHE_NAME = 'caffeine-v2';
+        self.addEventListener('install', (e) => self.skipWaiting());
+        self.addEventListener('activate', (e) => self.clients.claim());
         self.addEventListener('fetch', (e) => {
-          e.respondWith(
-            fetch(e.request).catch(() => caches.match(e.request))
-          );
+          e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
         });
       `;
       const blob = new Blob([swCode], { type: 'text/javascript' });
@@ -68,7 +76,41 @@
         .catch(err => console.log('Service Worker registration error:', err));
     }
 
-    // 2. Screen Wake Lock API Logic
+    // 2. Catch native beforeinstallprompt event for downloadable PWA functionality
+    let deferredPrompt = null;
+    const installBtn = document.getElementById('install-btn');
+    const installInfo = document.getElementById('install-info');
+
+    // Check if running in standalone mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+    if (!isStandalone) {
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent mini-infobar from appearing on mobile
+        e.preventDefault();
+        deferredPrompt = e;
+        // Show the download/install button
+        installBtn.classList.remove('hidden');
+      });
+
+      installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          console.log(`User response to install prompt: ${outcome}`);
+          deferredPrompt = null;
+          installBtn.classList.add('hidden');
+        }
+      });
+
+      // iOS Safari Fallback helper
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS) {
+        installInfo.innerText = 'To install on iOS: tap Share icon ➔ "Add to Home Screen"';
+      }
+    }
+
+    // 3. Screen Wake Lock API Logic
     let wakeLock = null;
 
     async function requestWakeLock() {
@@ -81,22 +123,24 @@
       }
     }
 
-    // Re-acquire lock on visibility change when coming back to tab
+    // Re-acquire lock on visibility change
     document.addEventListener('visibilitychange', async () => {
       if (wakeLock !== null && document.visibilityState === 'visible') {
         await requestWakeLock();
       }
     });
 
-    // Automatically request wake lock on page load
+    // Automatically request wake lock on page load & click fallback
     window.addEventListener('DOMContentLoaded', () => {
       requestWakeLock();
     });
 
-    // Fallback trigger on screen click/tap to bypass strict autoplay/gestures policies
-    document.body.addEventListener('click', () => {
-      if (!wakeLock) {
-        requestWakeLock();
+    document.body.addEventListener('click', (e) => {
+      // Don't intercept clicks on the install button itself
+      if (e.target !== installBtn && !installBtn.contains(e.target)) {
+        if (!wakeLock) {
+          requestWakeLock();
+        }
       }
     });
   </script>
