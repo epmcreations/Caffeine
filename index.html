@@ -5,21 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Caffeine</title>
   
-  <!-- Favicon -->
+  <!-- Favicon and iOS App Icon -->
   <link rel="icon" type="image/png" href="https://em-content.zobj.net/source/twitter/450/hot-beverage_2615.png">
   <link rel="apple-touch-icon" href="https://em-content.zobj.net/source/twitter/450/hot-beverage_2615.png">
   
-  <!-- Web Application Manifest (Data URL for single-file PWA setup) -->
+  <!-- Web Application Manifest (Embedded via Data URI) -->
   <link rel="manifest" href='data:application/manifest+json,{"name":"Caffeine","short_name":"Caffeine","start_url":".","display":"standalone","background_color":"#000000","theme_color":"#000000","icons":[{"src":"https://em-content.zobj.net/source/twitter/450/hot-beverage_2615.png","sizes":"512x512","type":"image/png"}]}'>
 
-  <!-- Theme Color for Browser Header -->
+  <!-- Web App Theme Meta Tags -->
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Absolute reset to prevent scrolling, margins, or callouts */
     html, body {
       background-color: #000000;
       color: #000000;
@@ -36,7 +35,7 @@
 </head>
 <body class="bg-black flex items-center justify-center min-h-screen w-screen overflow-hidden select-none">
 
-  <!-- Twemoji Coffee Image -->
+  <!-- Centered Twemoji Coffee Emoji -->
   <img 
     src="https://em-content.zobj.net/source/twitter/450/hot-beverage_2615.png" 
     alt="Coffee Emoji" 
@@ -45,34 +44,56 @@
   />
 
   <script>
-    // Screen Wake Lock Handler
+    // 1. Inline Service Worker Registration using a Blob URL for single-file PWA compliance
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        const CACHE_NAME = 'caffeine-v1';
+        self.addEventListener('install', (e) => {
+          e.waitUntil(self.skipWaiting());
+        });
+        self.addEventListener('activate', (e) => {
+          e.waitUntil(self.clients.claim());
+        });
+        self.addEventListener('fetch', (e) => {
+          e.respondWith(
+            fetch(e.request).catch(() => caches.match(e.request))
+          );
+        });
+      `;
+      const blob = new Blob([swCode], { type: 'text/javascript' });
+      const swUrl = URL.createObjectURL(blob);
+
+      navigator.serviceWorker.register(swUrl)
+        .then(() => console.log('Service Worker Registered'))
+        .catch(err => console.log('Service Worker registration error:', err));
+    }
+
+    // 2. Screen Wake Lock API Logic
     let wakeLock = null;
 
-    // Function to request the screen wake lock
     async function requestWakeLock() {
       try {
         if ('wakeLock' in navigator) {
           wakeLock = await navigator.wakeLock.request('screen');
         }
       } catch (err) {
-        // Silently fail to maintain minimal aesthetic if restricted by browser policy
         console.error(`Wake Lock error: ${err.name}, ${err.message}`);
       }
     }
 
-    // Re-acquire lock on visibility change (e.g. user switches tabs and returns)
+    // Re-acquire lock on visibility change when coming back to tab
     document.addEventListener('visibilitychange', async () => {
       if (wakeLock !== null && document.visibilityState === 'visible') {
         await requestWakeLock();
       }
     });
 
-    // Request wake lock when page initializes
+    // Automatically request wake lock on page load
     window.addEventListener('DOMContentLoaded', () => {
       requestWakeLock();
     });
 
-    // Fallback attempt when user taps screen (handles browser autoplay/user interaction policies)
+    // Fallback trigger on screen click/tap to bypass strict autoplay/gestures policies
     document.body.addEventListener('click', () => {
       if (!wakeLock) {
         requestWakeLock();
