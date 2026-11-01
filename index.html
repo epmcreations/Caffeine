@@ -2,145 +2,50 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Caffeine</title>
-  
-  <!-- Favicon and iOS App Icon -->
-  <link rel="icon" type="image/png" href="https://em-content.zobj.net/source/twitter/450/hot-beverage_2615.png">
-  <link rel="apple-touch-icon" href="https://em-content.zobj.net/source/twitter/450/hot-beverage_2615.png">
-  
-  <!-- Web Application Manifest (Embedded via Data URI) -->
-  <link rel="manifest" href='data:application/manifest+json,{"name":"Caffeine","short_name":"Caffeine","start_url":".","display":"standalone","background_color":"#000000","theme_color":"#000000","icons":[{"src":"https://em-content.zobj.net/source/twitter/450/hot-beverage_2615.png","sizes":"512x512","type":"image/png"}]}'>
-
-  <!-- Web App Theme Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icon.png">
   <meta name="theme-color" content="#000000">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    html, body {
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body, html {
+      width: 100%;
+      height: 100%;
       background-color: #000000;
-      color: #000000;
-      height: 100vh;
-      width: 100vw;
-      margin: 0;
-      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       overflow: hidden;
+    }
+    img {
+      width: 128px;
+      height: 128px;
       user-select: none;
-      -webkit-user-select: none;
-      -webkit-touch-callout: none;
     }
   </style>
 </head>
-<body class="bg-black flex flex-col items-center justify-center min-h-screen w-screen overflow-hidden select-none relative">
+<body>
 
-  <!-- Centered Twemoji Coffee Emoji -->
-  <img 
-    src="https://em-content.zobj.net/source/twitter/450/hot-beverage_2615.png" 
-    alt="Coffee Emoji" 
-    class="w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 object-contain pointer-events-none transform transition-transform duration-300 active:scale-95 mb-6"
-    id="coffee-icon"
-  />
-
-  <!-- PWA Install / Download Container -->
-  <div id="install-container" class="absolute bottom-10 flex flex-col items-center justify-center space-y-2 px-4 z-50">
-    <button 
-      id="install-btn" 
-      class="hidden bg-neutral-900 border border-neutral-700 hover:border-neutral-500 text-white font-medium text-sm px-5 py-2.5 rounded-full shadow-lg transition duration-200 hover:scale-105 active:scale-95 flex items-center space-x-2"
-    >
-      <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-      </svg>
-      <span>Install Caffeine App</span>
-    </button>
-    <div id="install-info" class="text-xs text-neutral-500 text-center max-w-xs font-sans opacity-75"></div>
-  </div>
+  <img src="icon.png" alt="Coffee Emoji">
 
   <script>
-    // 1. Inline Service Worker Registration using a Blob URL for single-file PWA compliance
     if ('serviceWorker' in navigator) {
-      const swCode = `
-        const CACHE_NAME = 'caffeine-v2';
-        self.addEventListener('install', (e) => self.skipWaiting());
-        self.addEventListener('activate', (e) => self.clients.claim());
-        self.addEventListener('fetch', (e) => {
-          e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-        });
-      `;
-      const blob = new Blob([swCode], { type: 'text/javascript' });
-      const swUrl = URL.createObjectURL(blob);
-
-      navigator.serviceWorker.register(swUrl)
-        .then(() => console.log('Service Worker Registered'))
-        .catch(err => console.log('Service Worker registration error:', err));
+      navigator.serviceWorker.register('sw.js').catch(() => {});
     }
 
-    // 2. Catch native beforeinstallprompt event for downloadable PWA functionality
-    let deferredPrompt = null;
-    const installBtn = document.getElementById('install-btn');
-    const installInfo = document.getElementById('install-info');
-
-    // Check if running in standalone mode
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-
-    if (!isStandalone) {
-      window.addEventListener('beforeinstallprompt', (e) => {
-        // Prevent mini-infobar from appearing on mobile
-        e.preventDefault();
-        deferredPrompt = e;
-        // Show the download/install button
-        installBtn.classList.remove('hidden');
-      });
-
-      installBtn.addEventListener('click', async () => {
-        if (deferredPrompt) {
-          deferredPrompt.prompt();
-          const { outcome } = await deferredPrompt.userChoice;
-          console.log(`User response to install prompt: ${outcome}`);
-          deferredPrompt = null;
-          installBtn.classList.add('hidden');
-        }
-      });
-
-      // iOS Safari Fallback helper
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-      if (isIOS) {
-        installInfo.innerText = 'To install on iOS: tap Share icon ➔ "Add to Home Screen"';
-      }
-    }
-
-    // 3. Screen Wake Lock API Logic
     let wakeLock = null;
-
     async function requestWakeLock() {
       try {
-        if ('wakeLock' in navigator) {
-          wakeLock = await navigator.wakeLock.request('screen');
-        }
-      } catch (err) {
-        console.error(`Wake Lock error: ${err.name}, ${err.message}`);
-      }
+        wakeLock = await navigator.wakeLock.request('screen');
+      } catch (err) {}
     }
 
-    // Re-acquire lock on visibility change
-    document.addEventListener('visibilitychange', async () => {
-      if (wakeLock !== null && document.visibilityState === 'visible') {
-        await requestWakeLock();
-      }
-    });
+    requestWakeLock();
 
-    // Automatically request wake lock on page load & click fallback
-    window.addEventListener('DOMContentLoaded', () => {
-      requestWakeLock();
-    });
-
-    document.body.addEventListener('click', (e) => {
-      // Don't intercept clicks on the install button itself
-      if (e.target !== installBtn && !installBtn.contains(e.target)) {
-        if (!wakeLock) {
-          requestWakeLock();
-        }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
       }
     });
   </script>
